@@ -33,6 +33,7 @@ impl std::fmt::Display for HTTPMethod {
                 HTTPMethod::GET => "GET",
                 HTTPMethod::POST => "POST",
                 HTTPMethod::PUT => "PUT",
+                HTTPMethod::PATCH => "PATCH",
                 HTTPMethod::DELETE => "DELETE",
             }
         )
