@@ -20,76 +20,87 @@ impl HttpClient {
         }
     }
     
-    pub fn send_request(&self, request: HttpRequest, ) -> Result<HttpResponse, String> {
+    pub fn send_request(&self, request: HttpRequest) -> Result<HttpResponse, String> {
         let runtime = Runtime::new().unwrap();
         runtime.block_on(async {
-
-            // Validar e normalizar URL
             let validated_url = Self::validate_and_normalize_url(&request.url)?;
-            
-            // Construir URL com query params
             let full_url = Self::build_url_with_params(&validated_url, &request.query_params)?;
-            
-            // Construir headers
             let headers = Self::build_headers(&request.headers)?;
 
-            // Iniciar timer
             let start = Instant::now();
+            let req_builder = self.build_request_with_body(&request, &full_url, headers);
+            let response = req_builder.send().await.map_err(Self::format_error)?;
+            let duration_ms = start.elapsed().as_millis();
 
-            // Fazer a requisição
-            let mut req_builder = self
-                .client
-                .request(request.method.as_reqwest(), &full_url)
-                .timeout(Duration::from_millis(request.timeout_ms));
+            Self::process_response(response, duration_ms).await
+        })
+    }
 
-            // Adicionar headers
-            for (key, value) in headers {
-                req_builder = req_builder.header(key, value);
-            }
-            
-            // Adicionar body se não for GET
-            if request.method != super::enums::HTTPMethod::GET
+    fn build_request_with_body(
+        &self,
+        request: &HttpRequest,
+        url: &str,
+        headers: HashMap<String, String>,
+    ) -> reqwest::RequestBuilder {
+        let mut builder = self
+            .client
+            .request(request.method.as_reqwest(), url)
+            .timeout(Duration::from_millis(request.timeout_ms));
+
+        for (key, value) in headers {
+            builder = builder.header(key, value);
+        }
+
+        if Self::should_include_body(request) {
+            builder = builder.body(request.body.clone());
+        }
+
+        builder
+    }
+
+    fn should_include_body(request: &HttpRequest) -> bool {
+        request.method != super::enums::HTTPMethod::GET
             && !request.body.is_empty()
             && request.body_type != super::enums::BodyType::None
-            {
-                req_builder = req_builder.body(request.body.clone());
-            }
-            
-            // Enviar requisição
-            let response = req_builder
-            .send()
-            .await
-            .map_err(|e| Self::format_error(e))?;
-            
-            // Calcular duração
-            let duration = start.elapsed().as_millis();
-            
-            // Extrair informações da resposta
-            let status = response.status().as_u16();
-            let status_text = response.status().canonical_reason()
+    }
+
+    async fn process_response(
+        response: reqwest::Response,
+        duration_ms: u128,
+    ) -> Result<HttpResponse, String> {
+        let status = response.status().as_u16();
+        let status_text = response
+            .status()
+            .canonical_reason()
             .unwrap_or("Unknown")
             .to_string();
 
-            let mut response_headers = HashMap::new();
-            for (key, value) in response.headers().iter() {
-                if let Ok(value_str) = value.to_str() {
-                    response_headers.insert(key.to_string(), value_str.to_string());
-                }
-            }
+        let response_headers = Self::extract_headers(response.headers());
 
-            let body = response
+        let body = response
             .text()
             .await
             .map_err(|e| format!("Failed to read response body: {}", e))?;
 
-            Ok(HttpResponse {
-                status,
-                status_text,
-                body,
-                headers: response_headers,
-                duration_ms: duration,
-            })
+        Ok(HttpResponse {
+            status,
+            status_text,
+            body,
+            headers: response_headers,
+            duration_ms,
         })
+    }
+
+    fn extract_headers(headers: &reqwest::header::HeaderMap) -> HashMap<String, String> {
+        headers
+            .iter()
+            .filter_map(|(key, value)| {
+                value
+                    .to_str()
+                    .ok()
+                    .map(|v| (key.to_string(), v.to_string()))
+            })
+            .collect()
     }
 
     fn validate_and_normalize_url(url: &str) -> Result<String, String> {
@@ -99,27 +110,32 @@ impl HttpClient {
             return Err("URL cannot be empty".to_string());
         }
 
-        // Auto-adicionar https:// se não tiver protocolo
-        let normalized = if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
-            format!("https://{}", trimmed)
-        } else {
-            trimmed.to_string()
-        };
+        let normalized = Self::add_protocol_if_missing(trimmed);
+        Self::validate_url(&normalized)?;
 
-        // Validar URL
-        Url::parse(&normalized)
-            .map(|_| normalized)
-            .map_err(|e| format!("Invalid URL: {}", e))
+        Ok(normalized)
+    }
+
+    fn add_protocol_if_missing(url: &str) -> String {
+        if url.starts_with("http://") || url.starts_with("https://") {
+            url.to_string()
+        } else {
+            format!("https://{}", url)
+        }
+    }
+
+    fn validate_url(url: &str) -> Result<(), String> {
+        Url::parse(url).map(|_| ()).map_err(|e| format!("Invalid URL: {}", e))
     }
 
     fn build_url_with_params(base_url: &str, params: &[KeyValue]) -> Result<String, String> {
         let mut url = Url::parse(base_url)
             .map_err(|e| format!("Failed to parse URL: {}", e))?;
 
-        for param in params {
-            if param.enabled && !param.key.is_empty() {
-                url.query_pairs_mut()
-                    .append_pair(&param.key, &param.value);
+        {
+            let mut query_pairs = url.query_pairs_mut();
+            for param in params.iter().filter(|p| p.enabled && !p.key.is_empty()) {
+                query_pairs.append_pair(&param.key, &param.value);
             }
         }
 
@@ -127,15 +143,11 @@ impl HttpClient {
     }
 
     fn build_headers(headers: &[KeyValue]) -> Result<HashMap<String, String>, String> {
-        let mut header_map = HashMap::new();
-
-        for header in headers {
-            if header.enabled && !header.key.is_empty() {
-                header_map.insert(header.key.clone(), header.value.clone());
-            }
-        }
-
-        Ok(header_map)
+        Ok(headers
+            .iter()
+            .filter(|h| h.enabled && !h.key.is_empty())
+            .map(|h| (h.key.clone(), h.value.clone()))
+            .collect())
     }
 
     fn format_error(error: reqwest::Error) -> String {

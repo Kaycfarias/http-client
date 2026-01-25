@@ -1,7 +1,7 @@
 use iced::Length::Fill;
 use iced::Theme;
 use iced::{Element, Task};
-use iced::widget::{button, column, container, row, text, text_input, scrollable, checkbox};
+use iced::widget::{button, column, container, row, text, text_input, scrollable, checkbox, Button};
 
 mod components;
 use components::{
@@ -67,163 +67,109 @@ impl Default for App {
 
 impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
+        use Message::*;
+        
         match message {
-            Message::HTTPSelected(method) => {
+            HTTPSelected(method) => {
                 self.method = method;
                 if method == HTTPMethod::GET {
                     self.body_type = BodyType::None;
                     self.body.clear();
                 }
-                Task::none()
             }
-            Message::UrlChanged(url) => {
+            UrlChanged(url) => {
                 self.url = url;
                 self.error_message = None;
-                Task::none()
             }
-            Message::HeaderKeyChanged(index, key) => {
-                if let Some(header) = self.headers.get_mut(index) {
-                    header.key = key;
-                }
-                Task::none()
-            }
-            Message::HeaderValueChanged(index, value) => {
-                if let Some(header) = self.headers.get_mut(index) {
-                    header.value = value;
-                }
-                Task::none()
-            }
-            Message::HeaderEnabledToggled(index) => {
-                if let Some(header) = self.headers.get_mut(index) {
-                    header.enabled = !header.enabled;
-                }
-                Task::none()
-            }
-            Message::AddHeader => {
-                self.headers.push(KeyValue::empty());
-                Task::none()
-            }
-            Message::RemoveHeader(index) => {
-                self.headers.remove(index);
-                Task::none()
-            }
-            Message::QueryParamKeyChanged(index, key) => {
-                if let Some(param) = self.query_params.get_mut(index) {
-                    param.key = key;
-                }
-                Task::none()
-            }
-            Message::QueryParamValueChanged(index, value) => {
-                if let Some(param) = self.query_params.get_mut(index) {
-                    param.value = value;
-                }
-                Task::none()
-            }
-            Message::QueryParamEnabledToggled(index) => {
-                if let Some(param) = self.query_params.get_mut(index) {
-                    param.enabled = !param.enabled;
-                }
-                Task::none()
-            }
-            Message::AddQueryParam => {
-                self.query_params.push(KeyValue::empty());
-                Task::none()
-            }
-            Message::RemoveQueryParam(index) => {
-                self.query_params.remove(index);
-                Task::none()
-            }
-            Message::BodyChanged(body) => {
-                self.body = body;
-                Task::none()
-            }
-            Message::BodyTypeChanged(body_type) => {
-                self.body_type = body_type;
-                Task::none()
-            }
-            Message::TimeoutChanged(timeout) => {
-                self.timeout_ms = timeout;
-                Task::none()
-            }
-            Message::Submit => {
-                if let Err(e) = url_validator::validate_and_normalize(&self.url) {
-                    self.error_message = Some(e);
-                    return Task::none();
-                }
+            HeaderKeyChanged(i, key) => self.update_header(i, |h| h.key = key),
+            HeaderValueChanged(i, val) => self.update_header(i, |h| h.value = val),
+            HeaderEnabledToggled(i) => self.update_header(i, |h| h.enabled = !h.enabled),
+            AddHeader => self.headers.push(KeyValue::empty()),
+            RemoveHeader(i) => { self.headers.remove(i); }
+            QueryParamKeyChanged(i, key) => self.update_param(i, |p| p.key = key),
+            QueryParamValueChanged(i, val) => self.update_param(i, |p| p.value = val),
+            QueryParamEnabledToggled(i) => self.update_param(i, |p| p.enabled = !p.enabled),
+            AddQueryParam => self.query_params.push(KeyValue::empty()),
+            RemoveQueryParam(i) => { self.query_params.remove(i); }
+            BodyChanged(body) => self.body = body,
+            BodyTypeChanged(body_type) => self.body_type = body_type,
+            TimeoutChanged(timeout) => self.timeout_ms = timeout,
+            Submit => return self.submit_request(),
+            RequestCompleted(result) => self.handle_response(result),
+            CancelRequest => self.is_loading = false,
+            LoadFromHistory(i) => self.load_from_history(i),
+            ClearHistory => self.history.clear(),
+            TabChanged(tab) => self.active_tab = tab,
+            ResponseTabChanged(tab) => self.response_tab = tab,
+        }
+        
+        Task::none()
+    }
 
-                self.is_loading = true;
+    fn update_header(&mut self, index: usize, update_fn: impl FnOnce(&mut KeyValue)) {
+        if let Some(header) = self.headers.get_mut(index) {
+            update_fn(header);
+        }
+    }
+
+    fn update_param(&mut self, index: usize, update_fn: impl FnOnce(&mut KeyValue)) {
+        if let Some(param) = self.query_params.get_mut(index) {
+            update_fn(param);
+        }
+    }
+
+    fn submit_request(&mut self) -> Task<Message> {
+        if let Err(e) = url_validator::validate_and_normalize(&self.url) {
+            self.error_message = Some(e);
+            return Task::none();
+        }
+
+        self.is_loading = true;
+        self.error_message = None;
+
+        let request = self.build_request();
+        let client = self.http_client.clone();
+
+        Task::perform(
+            async move { client.send_request(request) },
+            Message::RequestCompleted,
+        )
+    }
+
+    fn build_request(&self) -> HttpRequest {
+        HttpRequest {
+            method: self.method,
+            url: self.url.clone(),
+            headers: self.headers.clone(),
+            query_params: self.query_params.clone(),
+            body: self.body.clone(),
+            body_type: self.body_type,
+            timeout_ms: self.timeout_ms.parse().unwrap_or(30000),
+        }
+    }
+
+    fn handle_response(&mut self, result: Result<HttpResponse, String>) {
+        self.is_loading = false;
+        match result {
+            Ok(response) => {
+                self.history.add_item(self.build_request(), response.clone());
+                self.response = Some(response);
                 self.error_message = None;
+            }
+            Err(e) => self.error_message = Some(e),
+        }
+    }
 
-                let request = HttpRequest {
-                    method: self.method,
-                    url: self.url.clone(),
-                    headers: self.headers.clone(),
-                    query_params: self.query_params.clone(),
-                    body: self.body.clone(),
-                    body_type: self.body_type,
-                    timeout_ms: self.timeout_ms.parse().unwrap_or(30000),
-                };
-
-                let client = self.http_client.clone();
-
-                Task::perform(
-                    async move { client.send_request(request)},
-                    Message::RequestCompleted,
-                )
-            }
-            Message::RequestCompleted(result) => {
-                self.is_loading = false;
-
-                match result {
-                    Ok(response) => {
-                        let request = HttpRequest {
-                            method: self.method,
-                            url: self.url.clone(),
-                            headers: self.headers.clone(),
-                            query_params: self.query_params.clone(),
-                            body: self.body.clone(),
-                            body_type: self.body_type,
-                            timeout_ms: self.timeout_ms.parse().unwrap_or(30000),
-                        };
-                        self.history.add_item(request, response.clone());
-                        self.response = Some(response);
-                        self.error_message = None;
-                    }
-                    Err(e) => {
-                        self.error_message = Some(e);
-                    }
-                }
-                Task::none()
-            }
-            Message::CancelRequest => {
-                self.is_loading = false;
-                Task::none()
-            }
-            Message::LoadFromHistory(index) => {
-                if let Some(item) = self.history.get_item(index) {
-                    self.method = item.request.method;
-                    self.url = item.request.url.clone();
-                    self.headers = item.request.headers.clone();
-                    self.query_params = item.request.query_params.clone();
-                    self.body = item.request.body.clone();
-                    self.body_type = item.request.body_type;
-                    self.timeout_ms = item.request.timeout_ms.to_string();
-                    self.response = Some(item.response.clone());
-                }
-                Task::none()
-            }
-            Message::ClearHistory => {
-                self.history.clear();
-                Task::none()
-            }
-            Message::TabChanged(tab) => {
-                self.active_tab = tab;
-                Task::none()
-            }
-            Message::ResponseTabChanged(tab) => {
-                self.response_tab = tab;
-                Task::none()
-            }
+    fn load_from_history(&mut self, index: usize) {
+        if let Some(item) = self.history.get_item(index) {
+            self.method = item.request.method;
+            self.url = item.request.url.clone();
+            self.headers = item.request.headers.clone();
+            self.query_params = item.request.query_params.clone();
+            self.body = item.request.body.clone();
+            self.body_type = item.request.body_type;
+            self.timeout_ms = item.request.timeout_ms.to_string();
+            self.response = Some(item.response.clone());
         }
     }
 
@@ -282,30 +228,32 @@ impl App {
 
     fn view_request_tabs(&self) -> Element<'_, Message> {
         row![
-            button(text("Query Params"))
-                .on_press(Message::TabChanged(RequestTab::QueryParams))
-                .style(if self.active_tab == RequestTab::QueryParams {
-                    button::primary
-                } else {
-                    button::secondary
-                }),
-            button(text("Headers"))
-                .on_press(Message::TabChanged(RequestTab::Headers))
-                .style(if self.active_tab == RequestTab::Headers {
-                    button::primary
-                } else {
-                    button::secondary
-                }),
-            button(text("Body"))
-                .on_press(Message::TabChanged(RequestTab::Body))
-                .style(if self.active_tab == RequestTab::Body {
-                    button::primary
-                } else {
-                    button::secondary
-                }),
+            self.tab_button("Query Params", RequestTab::QueryParams),
+            self.tab_button("Headers", RequestTab::Headers),
+            self.tab_button("Body", RequestTab::Body),
         ]
         .spacing(5)
         .into()
+    }
+
+    fn tab_button(&self, label: &'static str, tab: RequestTab) -> Button<'_, Message> {
+        button(text(label))
+            .on_press(Message::TabChanged(tab))
+            .style(if self.active_tab == tab {
+                button::primary
+            } else {
+                button::secondary
+            })
+    }
+
+    fn response_tab_button(&self, label: &'static str, tab: ResponseTab) -> Button<'_, Message> {
+        button(text(label))
+            .on_press(Message::ResponseTabChanged(tab))
+            .style(if self.response_tab == tab {
+                button::primary
+            } else {
+                button::secondary
+            })
     }
 
     fn view_active_tab_content(&self) -> Element<'_, Message> {
@@ -317,69 +265,72 @@ impl App {
     }
 
     fn view_query_params(&self) -> Element<'_, Message> {
-        let mut params_column = column![].spacing(5);
-
-        for (index, param) in self.query_params.iter().enumerate() {
-            params_column = params_column.push(
-                row![
-                    checkbox(param.enabled)
-                        .on_toggle(move |_| Message::QueryParamEnabledToggled(index)),
-                    text_input("key", &param.key)
-                        .on_input(move |v| Message::QueryParamKeyChanged(index, v))
-                        .width(200),
-                    text_input("value", &param.value)
-                        .on_input(move |v| Message::QueryParamValueChanged(index, v))
-                        .width(Fill),
-                    button(text("✕"))
-                        .on_press(Message::RemoveQueryParam(index))
-                        .style(button::danger),
-                ]
-                .spacing(5),
-            );
-        }
-
-        params_column = params_column.push(
-            button(text("+ Add Query Param"))
-                .on_press(Message::AddQueryParam)
-                .style(button::success),
-        );
-
-        container(params_column)
-            .padding(10)
-            .into()
+        self.view_key_value_list(
+            &self.query_params,
+            "key",
+            "value",
+            Message::QueryParamKeyChanged,
+            Message::QueryParamValueChanged,
+            Message::QueryParamEnabledToggled,
+            Message::RemoveQueryParam,
+            Message::AddQueryParam,
+            "+ Add Query Param",
+        )
     }
 
     fn view_headers(&self) -> Element<'_, Message> {
-        let mut headers_column = column![].spacing(5);
+        self.view_key_value_list(
+            &self.headers,
+            "Header-Name",
+            "value",
+            Message::HeaderKeyChanged,
+            Message::HeaderValueChanged,
+            Message::HeaderEnabledToggled,
+            Message::RemoveHeader,
+            Message::AddHeader,
+            "+ Add Header",
+        )
+    }
 
-        for (index, header) in self.headers.iter().enumerate() {
-            headers_column = headers_column.push(
+    fn view_key_value_list(
+        &self,
+        items: &[KeyValue],
+        key_placeholder: &'static str,
+        value_placeholder: &'static str,
+        on_key_changed: fn(usize, String) -> Message,
+        on_value_changed: fn(usize, String) -> Message,
+        on_toggle: fn(usize) -> Message,
+        on_remove: fn(usize) -> Message,
+        on_add: Message,
+        add_label: &'static str,
+    ) -> Element<'_, Message> {
+        let mut col = column![].spacing(5);
+
+        for (index, item) in items.iter().enumerate() {
+            col = col.push(
                 row![
-                    checkbox(header.enabled)
-                        .on_toggle(move |_| Message::HeaderEnabledToggled(index)),
-                    text_input("Header-Name", &header.key)
-                        .on_input(move |v| Message::HeaderKeyChanged(index, v))
+                    checkbox(item.enabled).on_toggle(move |_| on_toggle(index)),
+                    text_input(key_placeholder, &item.key)
+                        .on_input(move |v| on_key_changed(index, v))
                         .width(200),
-                    text_input("value", &header.value)
-                        .on_input(move |v| Message::HeaderValueChanged(index, v))
+                    text_input(value_placeholder, &item.value)
+                        .on_input(move |v| on_value_changed(index, v))
                         .width(Fill),
                     button(text("✕"))
-                        .on_press(Message::RemoveHeader(index))
+                        .on_press(on_remove(index))
                         .style(button::danger),
                 ]
                 .spacing(5),
             );
         }
 
-        headers_column = headers_column.push(
-            button(text("+ Add Header"))
-                .on_press(Message::AddHeader)
+        col = col.push(
+            button(text(add_label))
+                .on_press(on_add)
                 .style(button::success),
         );
 
-        container(headers_column)
-            .padding(10)
-            .into()
+        container(col).padding(10).into()
     }
 
     fn view_body(&self) -> Element<'_, Message> {
@@ -392,35 +343,13 @@ impl App {
         column![
             row![
                 text("Body Type:"),
-                button(text("None"))
-                    .on_press(Message::BodyTypeChanged(BodyType::None))
-                    .style(if self.body_type == BodyType::None {
-                        button::primary
-                    } else {
-                        button::secondary
-                    }),
-                button(text("Raw"))
-                    .on_press(Message::BodyTypeChanged(BodyType::Raw))
-                    .style(if self.body_type == BodyType::Raw {
-                        button::primary
-                    } else {
-                        button::secondary
-                    }),
-                button(text("JSON"))
-                    .on_press(Message::BodyTypeChanged(BodyType::Json))
-                    .style(if self.body_type == BodyType::Json {
-                        button::primary
-                    } else {
-                        button::secondary
-                    }),
+                self.body_type_button("None", BodyType::None),
+                self.body_type_button("Raw", BodyType::Raw),
+                self.body_type_button("JSON", BodyType::Json),
             ]
             .spacing(5),
             text_input(
-                if self.body_type == BodyType::Json {
-                    r#"{"key": "value"}"#
-                } else {
-                    "Body content..."
-                },
+                if self.body_type == BodyType::Json { r#"{"key": "value"}"# } else { "Body content..." },
                 &self.body
             )
             .on_input(Message::BodyChanged)
@@ -430,6 +359,16 @@ impl App {
         .spacing(10)
         .padding(10)
         .into()
+    }
+
+    fn body_type_button(&self, label: &'static str, body_type: BodyType) -> Button<'_, Message> {
+        button(text(label))
+            .on_press(Message::BodyTypeChanged(body_type))
+            .style(if self.body_type == body_type {
+                button::primary
+            } else {
+                button::secondary
+            })
     }
 
     fn view_response(&self) -> Element<'_, Message> {
@@ -454,20 +393,8 @@ impl App {
                 ]
                 .spacing(20),
                 row![
-                    button(text("Body"))
-                        .on_press(Message::ResponseTabChanged(ResponseTab::Body))
-                        .style(if self.response_tab == ResponseTab::Body {
-                            button::primary
-                        } else {
-                            button::secondary
-                        }),
-                    button(text("Headers"))
-                        .on_press(Message::ResponseTabChanged(ResponseTab::Headers))
-                        .style(if self.response_tab == ResponseTab::Headers {
-                            button::primary
-                        } else {
-                            button::secondary
-                        }),
+                    self.response_tab_button("Body", ResponseTab::Body),
+                    self.response_tab_button("Headers", ResponseTab::Headers),
                 ]
                 .spacing(5),
                 match self.response_tab {
@@ -552,6 +479,6 @@ impl App {
 
 fn main() -> iced::Result {
     iced::application(App::default, App::update, App::view)
-        .theme(|_state: &App| Theme::Ferra)
+        .theme(|_state: &App| Theme::CatppuccinFrappe)
         .run()
 }
