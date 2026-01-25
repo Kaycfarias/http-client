@@ -14,7 +14,9 @@ pub enum Message {
     QueryParamEnabledToggled(usize),
     AddQueryParam,
     RemoveQueryParam(usize),
+    #[allow(dead_code)]
     BodyChanged(String),
+    BodyEditorAction(iced::widget::text_editor::Action),
     BodyTypeChanged(BodyType),
     TimeoutChanged(String),
     Submit,

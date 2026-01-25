@@ -1,7 +1,7 @@
 use iced::Length::Fill;
 use iced::Theme;
-use iced::{Element, Task};
-use iced::widget::{button, column, container, row, text, text_input, scrollable, checkbox, Button};
+use iced::{Element, Task, Length};
+use iced::widget::{column, container, row, scrollable, text_editor};
 
 mod components;
 use components::{
@@ -11,8 +11,9 @@ use components::{
     },
     history::RequestHistory,
     http_client::HttpClient,
-    pick_list::pick_list_view,
-    utils::{json_formatter, text_formatter, url_validator},
+    utils::url_validator,
+    ui,
+    styles,
 };
 
 struct App {
@@ -22,6 +23,7 @@ struct App {
     headers: Vec<KeyValue>,
     query_params: Vec<KeyValue>,
     body: String,
+    body_content: text_editor::Content,
     body_type: BodyType,
     timeout_ms: String,
 
@@ -52,6 +54,7 @@ impl Default for App {
             )],
             query_params: Vec::new(),
             body: String::new(),
+            body_content: text_editor::Content::new(),
             body_type: BodyType::Json,
             timeout_ms: "30000".to_string(),
             active_tab: RequestTab::QueryParams,
@@ -75,6 +78,7 @@ impl App {
                 if method == HTTPMethod::GET {
                     self.body_type = BodyType::None;
                     self.body.clear();
+                    self.body_content = text_editor::Content::new();
                 }
             }
             UrlChanged(url) => {
@@ -92,6 +96,10 @@ impl App {
             AddQueryParam => self.query_params.push(KeyValue::empty()),
             RemoveQueryParam(i) => { self.query_params.remove(i); }
             BodyChanged(body) => self.body = body,
+            BodyEditorAction(action) => {
+                self.body_content.perform(action);
+                self.body = self.body_content.text();
+            }
             BodyTypeChanged(body_type) => self.body_type = body_type,
             TimeoutChanged(timeout) => self.timeout_ms = timeout,
             Submit => return self.submit_request(),
@@ -167,6 +175,7 @@ impl App {
             self.headers = item.request.headers.clone();
             self.query_params = item.request.query_params.clone();
             self.body = item.request.body.clone();
+            self.body_content = text_editor::Content::with_text(&item.request.body);
             self.body_type = item.request.body_type;
             self.timeout_ms = item.request.timeout_ms.to_string();
             self.response = Some(item.response.clone());
@@ -174,98 +183,74 @@ impl App {
     }
 
     fn view(&self) -> Element<'_, Message> {
+        // Sidebar do histórico (esquerda, largura fixa)
+        let history_sidebar = container(
+            scrollable(
+                ui::view_history(&self.history)
+            )
+        )
+        .width(300)
+        .height(Length::Fill);
+
+        // Conteúdo principal (direita, ocupa espaço restante)
         let main_content = column![
-            text("HTTP Client").size(32),
+            // Header com controles principais
+            ui::view_header(self.method, &self.url, self.is_loading),
             
-            row![
-                pick_list_view(Some(self.method)),
-                text_input("https://api.example.com/endpoint", &self.url)
-                    .on_input(Message::UrlChanged)
-                    .width(Fill),
-                if self.is_loading {
-                    button(text("Sending...")).padding(10)
-                } else {
-                    button(text("Send"))
-                        .on_press(Message::Submit)
-                        .padding(10)
-                }
-            ]
-            .spacing(10),
-            
+            // Mensagem de erro (se houver)
             if let Some(error) = &self.error_message {
-                container(text(error).style(|theme| text::danger(theme)))
-                    .padding(10)
+                ui::view_error_message(error)
             } else {
-                container(text(""))
+                ui::view_empty_error()
             },
             
-            row![
-                text("Timeout (ms):"),
-                text_input("30000", &self.timeout_ms)
-                    .on_input(Message::TimeoutChanged)
-                    .width(100),
-            ]
-            .spacing(10),
+            // Configuração de timeout
+            ui::view_timeout_config(&self.timeout_ms),
             
-            self.view_request_tabs(),
-            self.view_active_tab_content(),
+            // Container de request (tabs + conteúdo)
+            container(
+                column![
+                    ui::view_request_tabs(self.active_tab),
+                    self.view_active_tab_content(),
+                ]
+                .spacing(0)
+                .width(Fill)
+            )
+            .style(styles::request_container),
             
-            if self.response.is_some() {
-                self.view_response()
+            // Response ou placeholder
+            if let Some(response) = &self.response {
+                ui::view_response(response, self.response_tab)
             } else {
-                container(text("No response yet"))
-                    .padding(20)
-                    .into()
+                ui::view_no_response()
             },
-            
-            self.view_history(),
         ]
-        .spacing(15)
-        .padding(20);
+        .spacing(10)
+        .padding([16, 20]);
 
-        scrollable(main_content).into()
-    }
-
-    fn view_request_tabs(&self) -> Element<'_, Message> {
-        row![
-            self.tab_button("Query Params", RequestTab::QueryParams),
-            self.tab_button("Headers", RequestTab::Headers),
-            self.tab_button("Body", RequestTab::Body),
+        // Layout de duas colunas: histórico | conteúdo principal
+        let layout = row![
+            history_sidebar,
+            scrollable(main_content).width(Length::Fill),
         ]
-        .spacing(5)
-        .into()
-    }
+        .spacing(0);
 
-    fn tab_button(&self, label: &'static str, tab: RequestTab) -> Button<'_, Message> {
-        button(text(label))
-            .on_press(Message::TabChanged(tab))
-            .style(if self.active_tab == tab {
-                button::primary
-            } else {
-                button::secondary
-            })
-    }
-
-    fn response_tab_button(&self, label: &'static str, tab: ResponseTab) -> Button<'_, Message> {
-        button(text(label))
-            .on_press(Message::ResponseTabChanged(tab))
-            .style(if self.response_tab == tab {
-                button::primary
-            } else {
-                button::secondary
-            })
+        container(layout)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
     fn view_active_tab_content(&self) -> Element<'_, Message> {
         match self.active_tab {
             RequestTab::QueryParams => self.view_query_params(),
             RequestTab::Headers => self.view_headers(),
-            RequestTab::Body => self.view_body(),
+            RequestTab::Body => ui::view_body_editor(self.method, self.body_type, &self.body_content),
         }
     }
 
     fn view_query_params(&self) -> Element<'_, Message> {
-        self.view_key_value_list(
+        ui::view_key_value_list(
             &self.query_params,
             "key",
             "value",
@@ -279,7 +264,7 @@ impl App {
     }
 
     fn view_headers(&self) -> Element<'_, Message> {
-        self.view_key_value_list(
+        ui::view_key_value_list(
             &self.headers,
             "Header-Name",
             "value",
@@ -291,194 +276,10 @@ impl App {
             "+ Add Header",
         )
     }
-
-    fn view_key_value_list(
-        &self,
-        items: &[KeyValue],
-        key_placeholder: &'static str,
-        value_placeholder: &'static str,
-        on_key_changed: fn(usize, String) -> Message,
-        on_value_changed: fn(usize, String) -> Message,
-        on_toggle: fn(usize) -> Message,
-        on_remove: fn(usize) -> Message,
-        on_add: Message,
-        add_label: &'static str,
-    ) -> Element<'_, Message> {
-        let mut col = column![].spacing(5);
-
-        for (index, item) in items.iter().enumerate() {
-            col = col.push(
-                row![
-                    checkbox(item.enabled).on_toggle(move |_| on_toggle(index)),
-                    text_input(key_placeholder, &item.key)
-                        .on_input(move |v| on_key_changed(index, v))
-                        .width(200),
-                    text_input(value_placeholder, &item.value)
-                        .on_input(move |v| on_value_changed(index, v))
-                        .width(Fill),
-                    button(text("✕"))
-                        .on_press(on_remove(index))
-                        .style(button::danger),
-                ]
-                .spacing(5),
-            );
-        }
-
-        col = col.push(
-            button(text(add_label))
-                .on_press(on_add)
-                .style(button::success),
-        );
-
-        container(col).padding(10).into()
-    }
-
-    fn view_body(&self) -> Element<'_, Message> {
-        if self.method == HTTPMethod::GET {
-            return container(text("Body is not available for GET requests"))
-                .padding(20)
-                .into();
-        }
-
-        column![
-            row![
-                text("Body Type:"),
-                self.body_type_button("None", BodyType::None),
-                self.body_type_button("Raw", BodyType::Raw),
-                self.body_type_button("JSON", BodyType::Json),
-            ]
-            .spacing(5),
-            text_input(
-                if self.body_type == BodyType::Json { r#"{"key": "value"}"# } else { "Body content..." },
-                &self.body
-            )
-            .on_input(Message::BodyChanged)
-            .line_height(text::LineHeight::Relative(1.5))
-            .width(Fill),
-        ]
-        .spacing(10)
-        .padding(10)
-        .into()
-    }
-
-    fn body_type_button(&self, label: &'static str, body_type: BodyType) -> Button<'_, Message> {
-        button(text(label))
-            .on_press(Message::BodyTypeChanged(body_type))
-            .style(if self.body_type == body_type {
-                button::primary
-            } else {
-                button::secondary
-            })
-    }
-
-    fn view_response(&self) -> Element<'_, Message> {
-        if let Some(response) = &self.response {
-            let status_color = if response.status >= 200 && response.status < 300 {
-                iced::Color::from_rgb(0.0, 0.8, 0.0)
-            } else if response.status >= 400 {
-                iced::Color::from_rgb(0.8, 0.0, 0.0)
-            } else {
-                iced::Color::from_rgb(0.5, 0.5, 0.5)
-            };
-
-            column![
-                text("Response").size(24),
-                row![
-                    text(format!("Status: {} {}", response.status, response.status_text))
-                        .color(status_color),
-                    text(format!(
-                        "Time: {}",
-                        text_formatter::format_duration(response.duration_ms)
-                    )),
-                ]
-                .spacing(20),
-                row![
-                    self.response_tab_button("Body", ResponseTab::Body),
-                    self.response_tab_button("Headers", ResponseTab::Headers),
-                ]
-                .spacing(5),
-                match self.response_tab {
-                    ResponseTab::Body => {
-                        let formatted_body = if json_formatter::is_valid_json(&response.body) {
-                            json_formatter::format(&response.body).unwrap_or(response.body.clone())
-                        } else {
-                            response.body.clone()
-                        };
-                        container(
-                            scrollable(text(formatted_body).font(iced::Font::MONOSPACE))
-                                .height(300)
-                        )
-                        .padding(10)
-                    }
-                    ResponseTab::Headers => {
-                        let headers_text = response
-                            .headers
-                            .iter()
-                            .map(|(k, v)| format!("{}: {}", k, v))
-                            .collect::<Vec<_>>()
-                            .join("\n");
-                        container(
-                            scrollable(text(headers_text).font(iced::Font::MONOSPACE)).height(300)
-                        )
-                        .padding(10)
-                    }
-                },
-            ]
-            .spacing(10)
-            .into()
-        } else {
-            text("No response").into()
-        }
-    }
-
-    fn view_history(&self) -> Element<'_, Message> {
-        let mut history_column = column![
-            row![
-                text("History").size(24),
-                button(text("Clear"))
-                    .on_press(Message::ClearHistory)
-                    .style(button::danger),
-            ]
-            .spacing(10),
-        ]
-        .spacing(10);
-
-        if self.history.is_empty() {
-            history_column = history_column.push(text("No requests in history"));
-        } else {
-            for (index, item) in self.history.get_items().iter().enumerate() {
-                let formatted_time =
-                    RequestHistory::format_timestamp(item.timestamp);
-                history_column = history_column.push(
-                    button(
-                        column![
-                            row![
-                                text(format!("{}", item.request.method)).size(14),
-                                text(&item.request.url).size(14),
-                            ]
-                            .spacing(10),
-                            text(format!(
-                                "{} - {}ms",
-                                formatted_time, item.response.duration_ms
-                            ))
-                            .size(12),
-                        ]
-                        .spacing(5),
-                    )
-                    .on_press(Message::LoadFromHistory(index))
-                    .width(Fill),
-                );
-            }
-        }
-
-        container(history_column)
-            .padding(10)
-            .into()
-    }
 }
 
 fn main() -> iced::Result {
     iced::application(App::default, App::update, App::view)
-        .theme(|_state: &App| Theme::CatppuccinFrappe)
+        .theme(|_state: &App| Theme::Oxocarbon)
         .run()
 }
