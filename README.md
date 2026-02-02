@@ -13,7 +13,9 @@
 
 <!-- TODO: Add screenshots here -->
 
-![Main Interface](docs/screenshots/main.png)
+![Main Interface preview](docs/screenshots/preview.gif)
+
+![Main Interface screenshot](docs/screenshots/main.png)
 
 <!-- ![Request History](docs/screenshots/history.png) -->
 
