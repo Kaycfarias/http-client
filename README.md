@@ -13,7 +13,7 @@
 
 <!-- TODO: Add screenshots here -->
 
-[Main Interface](docs/screenshots/main.png)
+![Main Interface](docs/screenshots/main.png)
 
 <!-- ![Request History](docs/screenshots/history.png) -->
 
