@@ -12,7 +12,9 @@
 ## 📸 Screenshots
 
 <!-- TODO: Add screenshots here -->
-<!-- ![Main Interface](docs/screenshots/main.png) -->
+
+[Main Interface](docs/screenshots/main.png)
+
 <!-- ![Request History](docs/screenshots/history.png) -->
 
 **Note**: Run `cargo run` to see the application in action!
@@ -261,10 +263,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 👤 Author
 
-**Kay C.**
+**Kayc Farias**
 
-- GitHub: [@kayc-des](https://github.com/kayc-des)
-- LinkedIn: [linkedin.com/in/kayc-des](https://linkedin.com/in/kayc-des)
+- GitHub: [@Kaycfarias](https://github.com/Kaycfarias)
+- LinkedIn: [Kayc Farias](https://www.linkedin.com/in/kayc-farias-b32840283)
 
 ---
 
@@ -273,15 +275,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **[Iced Community](https://github.com/iced-rs/iced)** - For the excellent GUI framework
 - **[Rust Community](https://www.rust-lang.org/community)** - For making Rust awesome
 - **JSONPlaceholder** - For providing free testing endpoints
-
----
-
-## 📊 Project Stats
-
-- **Lines of Code**: ~2,000+
-- **Modules**: 15+
-- **Build Time**: ~30s (clean build)
-- **Binary Size**: ~8MB (release)
 
 ---
 
