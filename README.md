@@ -3,6 +3,7 @@
 > **Modern HTTP client built with Rust and Iced framework**  
 > A Postman-like tool with native performance, clean architecture, and intuitive UI.
 
+![Build Status](https://github.com/Kaycfarias/http-client/workflows/CI/badge.svg)
 ![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)
 ![Iced](https://img.shields.io/badge/iced-0.14-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)

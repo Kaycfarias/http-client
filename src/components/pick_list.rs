@@ -1,5 +1,5 @@
+use iced::Element;
 use iced::widget::{column, pick_list};
-use iced::{Element};
 
 use crate::components::enums::{HTTPMethod, Message};
 
@@ -15,12 +15,8 @@ impl HTTPMethod {
 
 pub fn pick_list_view(selected_method: Option<HTTPMethod>) -> Element<'static, Message> {
     column![
-        pick_list(
-        &HTTPMethod::ALL[..],
-        selected_method,
-        Message::HTTPSelected,
-    )
-    .placeholder("Method")
+        pick_list(&HTTPMethod::ALL[..], selected_method, Message::HTTPSelected,)
+            .placeholder("Method")
     ]
     .into()
 }

@@ -1,19 +1,18 @@
 use iced::Length::Fill;
 use iced::Theme;
-use iced::{Element, Task, Length};
 use iced::widget::{column, container, row, scrollable, text_editor};
+use iced::{Element, Length, Task};
 
 mod components;
 use components::{
     enums::{
-        BodyType, HTTPMethod, HttpRequest, HttpResponse, KeyValue, Message, RequestTab,
-        ResponseTab, DEFAULT_TIMEOUT_MS,
+        BodyType, DEFAULT_TIMEOUT_MS, HTTPMethod, HttpRequest, HttpResponse, KeyValue, Message,
+        RequestTab, ResponseTab,
     },
     history::RequestHistory,
     http_client::HttpClient,
+    styles, ui,
     utils::url_validator,
-    ui,
-    styles,
 };
 
 struct App {
@@ -62,7 +61,7 @@ impl Default for App {
 impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         use Message::*;
-        
+
         match message {
             HTTPSelected(method) => {
                 self.method = method;
@@ -76,16 +75,32 @@ impl App {
                 self.url = url;
                 self.error_message = None;
             }
-            HeaderKeyChanged(i, key) => Self::update_list_item(&mut self.headers, i, |h| h.key = key),
-            HeaderValueChanged(i, val) => Self::update_list_item(&mut self.headers, i, |h| h.value = val),
-            HeaderEnabledToggled(i) => Self::update_list_item(&mut self.headers, i, |h| h.enabled = !h.enabled),
+            HeaderKeyChanged(i, key) => {
+                Self::update_list_item(&mut self.headers, i, |h| h.key = key)
+            }
+            HeaderValueChanged(i, val) => {
+                Self::update_list_item(&mut self.headers, i, |h| h.value = val)
+            }
+            HeaderEnabledToggled(i) => {
+                Self::update_list_item(&mut self.headers, i, |h| h.enabled = !h.enabled)
+            }
             AddHeader => self.headers.push(KeyValue::empty()),
-            RemoveHeader(i) => { self.headers.remove(i); }
-            QueryParamKeyChanged(i, key) => Self::update_list_item(&mut self.query_params, i, |p| p.key = key),
-            QueryParamValueChanged(i, val) => Self::update_list_item(&mut self.query_params, i, |p| p.value = val),
-            QueryParamEnabledToggled(i) => Self::update_list_item(&mut self.query_params, i, |p| p.enabled = !p.enabled),
+            RemoveHeader(i) => {
+                self.headers.remove(i);
+            }
+            QueryParamKeyChanged(i, key) => {
+                Self::update_list_item(&mut self.query_params, i, |p| p.key = key)
+            }
+            QueryParamValueChanged(i, val) => {
+                Self::update_list_item(&mut self.query_params, i, |p| p.value = val)
+            }
+            QueryParamEnabledToggled(i) => {
+                Self::update_list_item(&mut self.query_params, i, |p| p.enabled = !p.enabled)
+            }
             AddQueryParam => self.query_params.push(KeyValue::empty()),
-            RemoveQueryParam(i) => { self.query_params.remove(i); }
+            RemoveQueryParam(i) => {
+                self.query_params.remove(i);
+            }
             BodyChanged(body) => self.body = body,
             BodyEditorAction(action) => {
                 self.body_content.perform(action);
@@ -101,16 +116,12 @@ impl App {
             TabChanged(tab) => self.active_tab = tab,
             ResponseTabChanged(tab) => self.response_tab = tab,
         }
-        
+
         Task::none()
     }
 
     /// Atualiza um item em uma lista se o índice for válido
-    fn update_list_item<T>(
-        list: &mut Vec<T>,
-        index: usize,
-        update_fn: impl FnOnce(&mut T),
-    ) {
+    fn update_list_item<T>(list: &mut [T], index: usize, update_fn: impl FnOnce(&mut T)) {
         if let Some(item) = list.get_mut(index) {
             update_fn(item);
         }
@@ -148,10 +159,11 @@ impl App {
 
     fn handle_response(&mut self, result: Result<HttpResponse, String>) {
         self.is_loading = false;
-        
+
         match result {
             Ok(response) => {
-                self.history.add_item(self.build_request(), response.clone());
+                self.history
+                    .add_item(self.build_request(), response.clone());
                 self.response = Some(response);
                 self.error_message = None;
             }
@@ -176,25 +188,18 @@ impl App {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let history_sidebar = container(
-            scrollable(
-                ui::view_history(&self.history)
-            )
-        )
-        .width(300)
-        .height(Length::Fill);
+        let history_sidebar = container(scrollable(ui::view_history(&self.history)))
+            .width(300)
+            .height(Length::Fill);
 
         let main_content = column![
             ui::view_header(self.method, &self.url, self.is_loading),
-            
             if let Some(error) = &self.error_message {
                 ui::view_error_message(error)
             } else {
                 ui::view_empty_error()
             },
-            
             ui::view_timeout_config(&self.timeout_ms),
-            
             container(
                 column![
                     ui::view_request_tabs(self.active_tab),
@@ -204,7 +209,6 @@ impl App {
                 .width(Fill)
             )
             .style(styles::request_container),
-            
             if let Some(response) = &self.response {
                 ui::view_response(response, self.response_tab)
             } else {
@@ -230,7 +234,9 @@ impl App {
         match self.active_tab {
             RequestTab::QueryParams => self.view_query_params(),
             RequestTab::Headers => self.view_headers(),
-            RequestTab::Body => ui::view_body_editor(self.method, self.body_type, &self.body_content),
+            RequestTab::Body => {
+                ui::view_body_editor(self.method, self.body_type, &self.body_content)
+            }
         }
     }
 

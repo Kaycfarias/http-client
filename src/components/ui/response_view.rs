@@ -1,8 +1,8 @@
-use iced::Element;
-use iced::widget::{button, column, container, row, scrollable, text, Button};
 use crate::components::enums::{HttpResponse, Message, ResponseTab};
 use crate::components::styles;
 use crate::components::utils::{json_formatter, text_formatter};
+use iced::Element;
+use iced::widget::{Button, button, column, container, row, scrollable, text};
 
 pub fn view_response<'a>(
     response: &'a HttpResponse,
@@ -10,16 +10,18 @@ pub fn view_response<'a>(
 ) -> Element<'a, Message> {
     let (status_color, status_icon) = get_status_info(response.status);
 
-    container(column![
-        text("Response").size(20),
-        view_response_info(response, status_color, status_icon),
-        view_response_tabs(response_tab),
-        view_response_content(response, response_tab),
-    ]
-    .spacing(16))
-        .padding(20)
-        .style(styles::response_container)
-        .into()
+    container(
+        column![
+            text("Response").size(20),
+            view_response_info(response, status_color, status_icon),
+            view_response_tabs(response_tab),
+            view_response_content(response, response_tab),
+        ]
+        .spacing(16),
+    )
+    .padding(20)
+    .style(styles::response_container)
+    .into()
 }
 
 pub fn view_no_response() -> Element<'static, Message> {
@@ -27,17 +29,17 @@ pub fn view_no_response() -> Element<'static, Message> {
         container(
             text("📭 No response yet")
                 .size(14)
-                .color(iced::Color::from_rgb(0.5, 0.5, 0.5))
+                .color(iced::Color::from_rgb(0.5, 0.5, 0.5)),
         )
         .padding(32)
-        .style(styles::empty_state_card)
+        .style(styles::empty_state_card),
     )
     .padding(0)
     .into()
 }
 
 fn get_status_info(status: u16) -> (iced::Color, &'static str) {
-    if status >= 200 && status < 300 {
+    if (200..300).contains(&status) {
         (iced::Color::from_rgb(0.0, 0.7, 0.0), "✓")
     } else if status >= 400 {
         (iced::Color::from_rgb(0.8, 0.0, 0.0), "✗")
@@ -67,11 +69,14 @@ fn view_status_badge<'a>(
     container(
         row![
             text(status_icon).size(16).color(status_color),
-            text(format!("Status: {} {}", response.status, response.status_text))
-                .color(status_color)
-                .size(14),
+            text(format!(
+                "Status: {} {}",
+                response.status, response.status_text
+            ))
+            .color(status_color)
+            .size(14),
         ]
-        .spacing(8)
+        .spacing(8),
     )
     .padding([8, 12])
     .style(styles::status_badge(status_color))
@@ -84,7 +89,7 @@ fn view_timing_badge(response: &HttpResponse) -> Element<'_, Message> {
             "⏱ Time: {}",
             text_formatter::format_duration(response.duration_ms)
         ))
-        .size(14)
+        .size(14),
     )
     .padding([8, 12])
     .style(styles::timing_card)
@@ -108,7 +113,7 @@ fn response_tab_button(
     let btn = button(text(label).size(14))
         .on_press(Message::ResponseTabChanged(tab))
         .padding([10, 18]);
-    
+
     if active_tab == tab {
         btn.style(button::primary)
     } else {
@@ -132,25 +137,22 @@ fn view_response_body(body: &str) -> Element<'_, Message> {
     } else {
         body.to_string()
     };
-    
-    container(
-        scrollable(text(formatted_body).font(iced::Font::MONOSPACE))
-            .height(300)
-    )
-    .padding(10)
-    .into()
+
+    container(scrollable(text(formatted_body).font(iced::Font::MONOSPACE)).height(300))
+        .padding(10)
+        .into()
 }
 
-fn view_response_headers(headers: &std::collections::HashMap<String, String>) -> Element<'_, Message> {
+fn view_response_headers(
+    headers: &std::collections::HashMap<String, String>,
+) -> Element<'_, Message> {
     let headers_text = headers
         .iter()
         .map(|(k, v)| format!("{}: {}", k, v))
         .collect::<Vec<_>>()
         .join("\n");
-    
-    container(
-        scrollable(text(headers_text).font(iced::Font::MONOSPACE)).height(300)
-    )
-    .padding(10)
-    .into()
+
+    container(scrollable(text(headers_text).font(iced::Font::MONOSPACE)).height(300))
+        .padding(10)
+        .into()
 }

@@ -1,8 +1,9 @@
-use iced::Length::Fill;
-use iced::{Element, Length};
-use iced::widget::{button, checkbox, column, container, row, text, text_input};
 use crate::components::enums::{KeyValue, Message};
+use iced::Length::Fill;
+use iced::widget::{button, checkbox, column, container, row, text, text_input};
+use iced::{Element, Length};
 
+#[allow(clippy::too_many_arguments)]
 pub fn view_key_value_list<'a>(
     items: &'a [KeyValue],
     key_placeholder: &'static str,
@@ -36,7 +37,7 @@ pub fn view_key_value_list<'a>(
     col = col.push(
         button(text(add_label))
             .on_press(on_add)
-            .style(button::secondary)
+            .style(button::secondary),
     );
 
     container(col).padding(16).into()
@@ -53,6 +54,7 @@ fn view_header_row<'a>() -> Element<'a, Message> {
     .into()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn view_key_value_row<'a>(
     index: usize,
     item: &'a KeyValue,

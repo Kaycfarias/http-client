@@ -1,8 +1,8 @@
 use reqwest::Client;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use url::Url;
 use tokio::runtime::Runtime;
+use url::Url;
 
 use super::enums::{HttpRequest, HttpResponse, KeyValue};
 
@@ -19,7 +19,7 @@ impl HttpClient {
                 .expect("Failed to create HTTP client"),
         }
     }
-    
+
     pub fn send_request(&self, request: HttpRequest) -> Result<HttpResponse, String> {
         let runtime = Runtime::new().unwrap();
         runtime.block_on(async {
@@ -125,12 +125,13 @@ impl HttpClient {
     }
 
     fn validate_url(url: &str) -> Result<(), String> {
-        Url::parse(url).map(|_| ()).map_err(|e| format!("Invalid URL: {}", e))
+        Url::parse(url)
+            .map(|_| ())
+            .map_err(|e| format!("Invalid URL: {}", e))
     }
 
     fn build_url_with_params(base_url: &str, params: &[KeyValue]) -> Result<String, String> {
-        let mut url = Url::parse(base_url)
-            .map_err(|e| format!("Failed to parse URL: {}", e))?;
+        let mut url = Url::parse(base_url).map_err(|e| format!("Failed to parse URL: {}", e))?;
 
         {
             let mut query_pairs = url.query_pairs_mut();

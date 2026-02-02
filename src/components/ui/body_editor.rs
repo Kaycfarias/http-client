@@ -1,7 +1,7 @@
-use iced::Element;
-use iced::widget::{button, column, container, row, text, text_editor, Button};
 use crate::components::enums::{BodyType, HTTPMethod, Message};
 use crate::components::styles;
+use iced::Element;
+use iced::widget::{Button, button, column, container, row, text, text_editor};
 
 pub fn view_body_editor<'a>(
     method: HTTPMethod,
@@ -25,7 +25,7 @@ fn view_body_unavailable<'a>() -> Element<'a, Message> {
     container(
         text("📝 Body is not available for GET requests")
             .size(14)
-            .color(iced::Color::from_rgb(0.5, 0.5, 0.5))
+            .color(iced::Color::from_rgb(0.5, 0.5, 0.5)),
     )
     .padding(24)
     .into()
@@ -42,7 +42,10 @@ fn view_body_type_selector(body_type: BodyType) -> Element<'static, Message> {
     .into()
 }
 
-fn view_body_input<'a>(body_type: BodyType, body_content: &'a text_editor::Content) -> Element<'a, Message> {
+fn view_body_input<'a>(
+    body_type: BodyType,
+    body_content: &'a text_editor::Content,
+) -> Element<'a, Message> {
     let placeholder = if body_type == BodyType::Json {
         "Enter JSON: {\"key\": \"value\"}"
     } else {
@@ -53,7 +56,7 @@ fn view_body_input<'a>(body_type: BodyType, body_content: &'a text_editor::Conte
         text_editor(body_content)
             .on_action(Message::BodyEditorAction)
             .placeholder(placeholder)
-            .height(200)
+            .height(200),
     )
     .padding(12)
     .style(styles::body_input_border)
@@ -68,7 +71,7 @@ fn body_type_button(
     let btn = button(text(label).size(13))
         .on_press(Message::BodyTypeChanged(body_type))
         .padding([8, 14]);
-    
+
     if current_type == body_type {
         btn.style(button::primary)
     } else {

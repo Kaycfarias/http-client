@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Timeout padrão para requisições HTTP em milissegundos
 pub const DEFAULT_TIMEOUT_MS: u64 = 30000;
@@ -34,6 +34,7 @@ pub enum Message {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum HTTPMethod {
     #[default]
     GET,
@@ -70,8 +71,6 @@ impl HTTPMethod {
         ]
     }
 }
-
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyValue {
@@ -132,9 +131,10 @@ impl Default for HttpRequest {
         Self {
             method: HTTPMethod::GET,
             url: String::new(),
-            headers: vec![
-                KeyValue::new("Content-Type".to_string(), "application/json".to_string()),
-            ],
+            headers: vec![KeyValue::new(
+                "Content-Type".to_string(),
+                "application/json".to_string(),
+            )],
             query_params: Vec::new(),
             body: String::new(),
             body_type: BodyType::None,

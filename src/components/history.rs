@@ -1,7 +1,7 @@
 use super::enums::{HistoryItem, HttpRequest, HttpResponse};
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::fs;
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_HISTORY_ITEMS: usize = 50;
 const HISTORY_FILE_NAME: &str = "history.json";
@@ -17,41 +17,41 @@ impl RequestHistory {
     pub fn new() -> Self {
         let file_path = Self::get_history_file_path();
         let items = Self::load_from_file(&file_path).unwrap_or_default();
-        
+
         Self { items, file_path }
     }
-    
+
     fn get_history_file_path() -> PathBuf {
         let config_dir = dirs::config_dir()
             .map(|dir| dir.join(APP_NAME))
             .unwrap_or_else(|| PathBuf::from("."));
-        
+
         let _ = fs::create_dir_all(&config_dir);
-        
+
         config_dir.join(HISTORY_FILE_NAME)
     }
-    
+
     fn load_from_file(path: &PathBuf) -> Result<Vec<HistoryItem>, String> {
         if !path.exists() {
             return Ok(Vec::new());
         }
-        
-        let contents = fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read history file: {}", e))?;
-        
+
+        let contents =
+            fs::read_to_string(path).map_err(|e| format!("Failed to read history file: {}", e))?;
+
         let items: Vec<HistoryItem> = serde_json::from_str(&contents)
             .map_err(|e| format!("Failed to parse history file: {}", e))?;
-        
+
         Ok(items)
     }
-    
+
     fn save_to_file(&self) -> Result<(), String> {
         let json = serde_json::to_string_pretty(&self.items)
             .map_err(|e| format!("Failed to serialize history: {}", e))?;
-        
+
         fs::write(&self.file_path, json)
             .map_err(|e| format!("Failed to write history file: {}", e))?;
-        
+
         Ok(())
     }
 
@@ -72,7 +72,7 @@ impl RequestHistory {
         if self.items.len() > MAX_HISTORY_ITEMS {
             self.items.truncate(MAX_HISTORY_ITEMS);
         }
-        
+
         if let Err(e) = self.save_to_file() {
             eprintln!("Warning: Failed to save history: {}", e);
         }
@@ -104,7 +104,7 @@ impl RequestHistory {
 
     pub fn format_timestamp(timestamp: i64) -> String {
         use chrono::{Local, TimeZone};
-        
+
         let datetime = Local.timestamp_opt(timestamp, 0).unwrap();
         datetime.format("%d/%m/%Y %H:%M:%S").to_string()
     }

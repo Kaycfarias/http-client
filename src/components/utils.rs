@@ -31,7 +31,9 @@ pub mod url_validator {
     /// Extrai o domínio de uma URL
     #[allow(dead_code)]
     pub fn extract_domain(url: &str) -> Option<String> {
-        Url::parse(url).ok().and_then(|u| u.host_str().map(String::from))
+        Url::parse(url)
+            .ok()
+            .and_then(|u| u.host_str().map(String::from))
     }
 }
 

@@ -13,7 +13,6 @@ pub fn header_container(_theme: &Theme) -> container::Style {
     }
 }
 
-
 pub fn error_card(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
