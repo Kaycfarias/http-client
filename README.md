@@ -95,7 +95,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design decisions and impleme
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/http-client.git
+git clone https://github.com/Kaycfarias/http-client
 cd http-client
 
 # Run in development mode
