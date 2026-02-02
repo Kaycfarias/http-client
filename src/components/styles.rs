@@ -1,7 +1,6 @@
 use iced::Theme;
 use iced::widget::container;
 
-/// Estilo para o container do header principal
 pub fn header_container(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -14,7 +13,7 @@ pub fn header_container(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para card de erro
+
 pub fn error_card(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -27,7 +26,6 @@ pub fn error_card(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para card de configuração (timeout)
 pub fn config_card(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -39,7 +37,6 @@ pub fn config_card(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para container de request (tabs + conteúdo)
 pub fn request_container(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -51,7 +48,6 @@ pub fn request_container(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para placeholder "No response yet"
 pub fn empty_state_card(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -63,7 +59,6 @@ pub fn empty_state_card(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para container de response
 pub fn response_container(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -75,7 +70,6 @@ pub fn response_container(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para badge de status (sucesso, erro, warning)
 pub fn status_badge(color: iced::Color) -> impl Fn(&Theme) -> container::Style {
     move |_theme: &Theme| container::Style {
         border: iced::Border {
@@ -88,7 +82,6 @@ pub fn status_badge(color: iced::Color) -> impl Fn(&Theme) -> container::Style {
     }
 }
 
-/// Estilo para card de timing
 pub fn timing_card(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -100,7 +93,6 @@ pub fn timing_card(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para container do histórico (sidebar)
 pub fn history_container(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -113,7 +105,6 @@ pub fn history_container(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para item individual do histórico
 pub fn history_item(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {
@@ -125,7 +116,6 @@ pub fn history_item(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para badge de método HTTP
 pub fn method_badge(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(iced::Color::from_rgb(0.2, 0.4, 0.8).into()),
@@ -137,7 +127,6 @@ pub fn method_badge(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Estilo para badge de status no histórico
 pub fn status_badge_border(color: iced::Color) -> impl Fn(&Theme) -> container::Style {
     move |_theme: &Theme| container::Style {
         border: iced::Border {
@@ -149,7 +138,6 @@ pub fn status_badge_border(color: iced::Color) -> impl Fn(&Theme) -> container::
     }
 }
 
-/// Estilo para border do text input de body
 pub fn body_input_border(_theme: &Theme) -> container::Style {
     container::Style {
         border: iced::Border {

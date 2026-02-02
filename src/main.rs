@@ -17,7 +17,6 @@ use components::{
 };
 
 struct App {
-    // Request state
     method: HTTPMethod,
     url: String,
     headers: Vec<KeyValue>,
@@ -26,20 +25,12 @@ struct App {
     body_content: text_editor::Content,
     body_type: BodyType,
     timeout_ms: String,
-
-    // UI state
     active_tab: RequestTab,
     response_tab: ResponseTab,
     is_loading: bool,
     error_message: Option<String>,
-
-    // Response state
     response: Option<HttpResponse>,
-
-    // History
     history: RequestHistory,
-
-    // HTTP client
     http_client: HttpClient,
 }
 
@@ -185,7 +176,6 @@ impl App {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        // Sidebar do histórico (esquerda, largura fixa)
         let history_sidebar = container(
             scrollable(
                 ui::view_history(&self.history)
@@ -194,22 +184,17 @@ impl App {
         .width(300)
         .height(Length::Fill);
 
-        // Conteúdo principal (direita, ocupa espaço restante)
         let main_content = column![
-            // Header com controles principais
             ui::view_header(self.method, &self.url, self.is_loading),
             
-            // Mensagem de erro (se houver)
             if let Some(error) = &self.error_message {
                 ui::view_error_message(error)
             } else {
                 ui::view_empty_error()
             },
             
-            // Configuração de timeout
             ui::view_timeout_config(&self.timeout_ms),
             
-            // Container de request (tabs + conteúdo)
             container(
                 column![
                     ui::view_request_tabs(self.active_tab),
@@ -220,7 +205,6 @@ impl App {
             )
             .style(styles::request_container),
             
-            // Response ou placeholder
             if let Some(response) = &self.response {
                 ui::view_response(response, self.response_tab)
             } else {
@@ -230,7 +214,6 @@ impl App {
         .spacing(10)
         .padding([16, 20]);
 
-        // Layout de duas colunas: histórico | conteúdo principal
         let layout = row![
             history_sidebar,
             scrollable(main_content).width(Length::Fill),

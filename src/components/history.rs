@@ -22,12 +22,10 @@ impl RequestHistory {
     }
     
     fn get_history_file_path() -> PathBuf {
-        // Tenta usar diretório de config do usuário, ou usa diretório atual como fallback
         let config_dir = dirs::config_dir()
             .map(|dir| dir.join(APP_NAME))
             .unwrap_or_else(|| PathBuf::from("."));
         
-        // Cria o diretório se não existir
         let _ = fs::create_dir_all(&config_dir);
         
         config_dir.join(HISTORY_FILE_NAME)
@@ -71,12 +69,10 @@ impl RequestHistory {
 
         self.items.insert(0, item);
 
-        // Manter apenas os últimos MAX_HISTORY_ITEMS
         if self.items.len() > MAX_HISTORY_ITEMS {
             self.items.truncate(MAX_HISTORY_ITEMS);
         }
         
-        // Salvar no arquivo (loga erro mas não falha a operação)
         if let Err(e) = self.save_to_file() {
             eprintln!("Warning: Failed to save history: {}", e);
         }

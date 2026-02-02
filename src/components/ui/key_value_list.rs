@@ -16,12 +16,10 @@ pub fn view_key_value_list<'a>(
 ) -> Element<'a, Message> {
     let mut col = column![].spacing(8);
 
-    // Header row com labels
     if !items.is_empty() {
         col = col.push(view_header_row());
     }
 
-    // Rows de key-value
     for (index, item) in items.iter().enumerate() {
         col = col.push(view_key_value_row(
             index,
@@ -35,7 +33,6 @@ pub fn view_key_value_list<'a>(
         ));
     }
 
-    // Botão de adicionar
     col = col.push(
         button(text(add_label))
             .on_press(on_add)
@@ -47,7 +44,7 @@ pub fn view_key_value_list<'a>(
 
 fn view_header_row<'a>() -> Element<'a, Message> {
     row![
-        container(text("")).width(40), // Espaço para checkbox
+        container(text("")).width(40),
         container(text("Key").size(12)).width(250),
         container(text("Value").size(12)).width(Length::Fill),
         container(text("")).width(80), // Espaço para botão delete

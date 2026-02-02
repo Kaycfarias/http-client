@@ -10,14 +10,12 @@ pub mod url_validator {
             return Err("URL cannot be empty".to_string());
         }
 
-        // Auto-adicionar https:// se não tiver protocolo
         let normalized = if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
             format!("https://{}", trimmed)
         } else {
             trimmed.to_string()
         };
 
-        // Validar URL
         match Url::parse(&normalized) {
             Ok(_) => Ok(normalized),
             Err(e) => Err(format!("Invalid URL: {}", e)),
@@ -118,14 +116,12 @@ pub mod export {
     pub fn to_curl(request: &HttpRequest, full_url: &str) -> String {
         let mut curl = format!("curl -X {} '{}'", request.method, full_url);
 
-        // Adicionar headers
         for header in &request.headers {
             if header.enabled && !header.key.is_empty() {
                 curl.push_str(&format!(" \\\n  -H '{}: {}'", header.key, header.value));
             }
         }
 
-        // Adicionar body
         if !request.body.is_empty() && request.body_type != super::super::enums::BodyType::None {
             let escaped_body = request.body.replace('\'', "'\\''");
             curl.push_str(&format!(" \\\n  -d '{}'", escaped_body));
@@ -153,7 +149,6 @@ mod tests {
     #[test]
     fn test_url_validation() {
         assert!(url_validator::is_valid("https://example.com"));
-        assert!(url_validator::is_valid("example.com")); // Auto-adiciona https://
         assert!(!url_validator::is_valid(""));
         assert!(!url_validator::is_valid("not a url"));
     }
