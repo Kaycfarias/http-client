@@ -7,32 +7,27 @@ Um cliente HTTP completo construído em Rust usando o framework Iced para a inte
 ### Features Essenciais (MVP) ✅
 
 - **✅ Métodos HTTP Completos**
-
   - GET, POST, PUT, PATCH, DELETE
   - Seleção via dropdown
 
 - **✅ Campo de URL + Validação**
-
   - Input de URL com validação em tempo real
   - Auto-adição de `https://` se não especificado
   - Mensagens de erro claras
 
 - **✅ Headers Customizáveis**
-
   - Lista key/value dinâmica
   - Toggle on/off por header
   - Adicionar/remover headers facilmente
   - Header `Content-Type: application/json` por padrão
 
 - **✅ Body da Requisição**
-
   - Suporte para Raw text
   - Suporte para JSON
   - Opção de body vazio
   - Bloqueio automático do body para requisições GET
 
 - **✅ Enviar Request**
-
   - Botão "Send" com feedback visual
   - Estado de loading
   - Bloqueio de múltiplos envios simultâneos
@@ -47,20 +42,20 @@ Um cliente HTTP completo construído em Rust usando o framework Iced para a inte
 ### Features Avançadas ✅
 
 - **✅ Viewer de JSON**
-
   - Pretty print automático
   - Formatação com indentação
   - Detecção automática de JSON
 
 - **✅ Histórico de Requests**
-
+  - **Persistência**: Salvo automaticamente em disco (JSON)
+  - **Auto-load**: Carrega histórico ao iniciar aplicação
   - Armazena últimas 50 requisições
   - Mostra método + URL + tempo + timestamp
   - Clique para reutilizar request anterior
   - Botão para limpar histórico
+  - **Location**: `~/.config/http-client/history.json` (Linux/macOS) ou `%APPDATA%\http-client\history.json` (Windows)
 
 - **✅ Editor de Query Params**
-
   - Lista key/value
   - Auto-encode de parâmetros
   - Toggle on/off por parâmetro
@@ -91,6 +86,8 @@ src/
 
 #### `enums.rs` - Estruturas de Dados
 
+**Nota**: Todas as structs principais implementam `Serialize` e `Deserialize` do serde para persistência.
+
 - `HTTPMethod`: Enum para métodos HTTP (GET, POST, PUT, PATCH, DELETE)
 - `KeyValue`: Estrutura para headers e query params (key, value, enabled)
 - `BodyType`: Enum para tipos de body (None, Raw, Json)
@@ -111,10 +108,15 @@ src/
 
 #### `history.rs` - Gerenciamento de Histórico
 
-- **`RequestHistory`**: Gerencia histórico de requisições
+- **`RequestHistory`**: Gerencia histórico de requisições com persistência
+  - **Persistência**: Auto-save/load via JSON usando serde
+  - **Localização**: Usa crate `dirs` para obter diretório de config do SO
   - Armazena últimas 50 requisições
-  - `add_item()`: Adiciona nova requisição ao histórico
+  - `add_item()`: Adiciona nova requisição ao histórico e salva no disco
   - `get_items()`: Retorna lista de requisições
+  - `clear()`: Limpa histórico e arquivo
+  - `save_to_file()`: Serializa e salva histórico em JSON
+  - `load_from_file()`: Carrega e desserializa histórico do disco
   - `format_timestamp()`: Formata timestamp para exibição
 
 #### `utils.rs` - Utilitários

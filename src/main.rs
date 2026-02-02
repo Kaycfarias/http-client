@@ -7,7 +7,7 @@ mod components;
 use components::{
     enums::{
         BodyType, HTTPMethod, HttpRequest, HttpResponse, KeyValue, Message, RequestTab,
-        ResponseTab,
+        ResponseTab, DEFAULT_TIMEOUT_MS,
     },
     history::RequestHistory,
     http_client::HttpClient,
@@ -56,7 +56,7 @@ impl Default for App {
             body: String::new(),
             body_content: text_editor::Content::new(),
             body_type: BodyType::Json,
-            timeout_ms: "30000".to_string(),
+            timeout_ms: DEFAULT_TIMEOUT_MS.to_string(),
             active_tab: RequestTab::QueryParams,
             response_tab: ResponseTab::Body,
             is_loading: false,
@@ -85,14 +85,14 @@ impl App {
                 self.url = url;
                 self.error_message = None;
             }
-            HeaderKeyChanged(i, key) => self.update_header(i, |h| h.key = key),
-            HeaderValueChanged(i, val) => self.update_header(i, |h| h.value = val),
-            HeaderEnabledToggled(i) => self.update_header(i, |h| h.enabled = !h.enabled),
+            HeaderKeyChanged(i, key) => Self::update_list_item(&mut self.headers, i, |h| h.key = key),
+            HeaderValueChanged(i, val) => Self::update_list_item(&mut self.headers, i, |h| h.value = val),
+            HeaderEnabledToggled(i) => Self::update_list_item(&mut self.headers, i, |h| h.enabled = !h.enabled),
             AddHeader => self.headers.push(KeyValue::empty()),
             RemoveHeader(i) => { self.headers.remove(i); }
-            QueryParamKeyChanged(i, key) => self.update_param(i, |p| p.key = key),
-            QueryParamValueChanged(i, val) => self.update_param(i, |p| p.value = val),
-            QueryParamEnabledToggled(i) => self.update_param(i, |p| p.enabled = !p.enabled),
+            QueryParamKeyChanged(i, key) => Self::update_list_item(&mut self.query_params, i, |p| p.key = key),
+            QueryParamValueChanged(i, val) => Self::update_list_item(&mut self.query_params, i, |p| p.value = val),
+            QueryParamEnabledToggled(i) => Self::update_list_item(&mut self.query_params, i, |p| p.enabled = !p.enabled),
             AddQueryParam => self.query_params.push(KeyValue::empty()),
             RemoveQueryParam(i) => { self.query_params.remove(i); }
             BodyChanged(body) => self.body = body,
@@ -114,15 +114,14 @@ impl App {
         Task::none()
     }
 
-    fn update_header(&mut self, index: usize, update_fn: impl FnOnce(&mut KeyValue)) {
-        if let Some(header) = self.headers.get_mut(index) {
-            update_fn(header);
-        }
-    }
-
-    fn update_param(&mut self, index: usize, update_fn: impl FnOnce(&mut KeyValue)) {
-        if let Some(param) = self.query_params.get_mut(index) {
-            update_fn(param);
+    /// Atualiza um item em uma lista se o índice for válido
+    fn update_list_item<T>(
+        list: &mut Vec<T>,
+        index: usize,
+        update_fn: impl FnOnce(&mut T),
+    ) {
+        if let Some(item) = list.get_mut(index) {
+            update_fn(item);
         }
     }
 
@@ -152,19 +151,22 @@ impl App {
             query_params: self.query_params.clone(),
             body: self.body.clone(),
             body_type: self.body_type,
-            timeout_ms: self.timeout_ms.parse().unwrap_or(30000),
+            timeout_ms: self.timeout_ms.parse().unwrap_or(DEFAULT_TIMEOUT_MS),
         }
     }
 
     fn handle_response(&mut self, result: Result<HttpResponse, String>) {
         self.is_loading = false;
+        
         match result {
             Ok(response) => {
                 self.history.add_item(self.build_request(), response.clone());
                 self.response = Some(response);
                 self.error_message = None;
             }
-            Err(e) => self.error_message = Some(e),
+            Err(error) => {
+                self.error_message = Some(error);
+            }
         }
     }
 

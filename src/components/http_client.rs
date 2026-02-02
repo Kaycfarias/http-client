@@ -59,7 +59,7 @@ impl HttpClient {
     }
 
     fn should_include_body(request: &HttpRequest) -> bool {
-        request.method != super::enums::HTTPMethod::GET
+        request.method.allows_body()
             && !request.body.is_empty()
             && request.body_type != super::enums::BodyType::None
     }

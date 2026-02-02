@@ -1,4 +1,8 @@
 use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+
+/// Timeout padrão para requisições HTTP em milissegundos
+pub const DEFAULT_TIMEOUT_MS: u64 = 30000;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -29,13 +33,12 @@ pub enum Message {
     ResponseTabChanged(ResponseTab),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum HTTPMethod {
     #[default]
     GET,
     POST,
     PUT,
-    #[allow(dead_code)]
     PATCH,
     DELETE,
 }
@@ -49,6 +52,11 @@ impl HTTPMethod {
             HTTPMethod::PATCH => reqwest::Method::PATCH,
             HTTPMethod::DELETE => reqwest::Method::DELETE,
         }
+    }
+
+    /// Retorna true se o método HTTP permite body na requisição
+    pub fn allows_body(self) -> bool {
+        !matches!(self, HTTPMethod::GET)
     }
 
     #[allow(dead_code)]
@@ -65,7 +73,7 @@ impl HTTPMethod {
 
 
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyValue {
     pub key: String,
     pub value: String,
@@ -90,7 +98,7 @@ impl KeyValue {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum BodyType {
     #[default]
     None,
@@ -108,7 +116,7 @@ impl std::fmt::Display for BodyType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpRequest {
     pub method: HTTPMethod,
     pub url: String,
@@ -130,12 +138,12 @@ impl Default for HttpRequest {
             query_params: Vec::new(),
             body: String::new(),
             body_type: BodyType::None,
-            timeout_ms: 30000,
+            timeout_ms: DEFAULT_TIMEOUT_MS,
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpResponse {
     pub status: u16,
     pub status_text: String,
@@ -154,7 +162,7 @@ impl std::fmt::Display for HttpResponse {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryItem {
     pub request: HttpRequest,
     pub response: HttpResponse,

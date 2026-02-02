@@ -4,10 +4,11 @@ use iced::{Element};
 use crate::components::enums::{HTTPMethod, Message};
 
 impl HTTPMethod {
-    const ALL: [HTTPMethod; 4] = [
+    const ALL: [HTTPMethod; 5] = [
         HTTPMethod::GET,
         HTTPMethod::POST,
         HTTPMethod::PUT,
+        HTTPMethod::PATCH,
         HTTPMethod::DELETE,
     ];
 }
